@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="5">
+    <title>Hranilica za mačke - RFID baza</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; background: #f4f4f4; color: #222; }
+        h1 { color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #2c3e50; color: white; }
+        .status { padding: 10px; border-radius: 6px; margin-bottom: 20px; }
+        .opened { background: #d4edda; color: #155724; }
+        .registered { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>🐱 Hranilica za mačke</h1>
+
+    {% if last_event.tag_id %}
+    <div class="status {{ last_event.status }}">
+        Poslednji event: tag <strong>{{ last_event.tag_id }}</strong> —
+        {% if last_event.status == 'opened' %}otvorena hranilica{% else %}registrovan novi tag{% endif %}
+    </div>
+    {% endif %}
+
+    <h2>Registrovani RFID tagovi ({{ tags|length }})</h2>
+    <table>
+        <tr>
+            <th>Tag ID</th><th>Ime</th><th>Registrovan</th><th>Poslednje skeniranje</th><th>Broj skeniranja</th>
+        </tr>
+        {% for tag in tags %}
+        <tr>
+            <td>{{ tag.tag_id }}</td>
+            <td>{{ tag.name or '-' }}</td>
+            <td>{{ tag.registered_at }}</td>
+            <td>{{ tag.last_scan or '-' }}</td>
+            <td>{{ tag.scan_count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

@@ -22,18 +22,22 @@ if (!rfid.PICC_ReadCardSerial()) return;
 //Serial.print("Tag ID: ");
 String tagId = "";
 for (byte i = 0; i < rfid.uid.size; i++) {
-byte b = rfid.uid.uidByte[i];
-Serial.print(b, HEX);
-tagId += String(b, HEX);
+  byte b = rfid.uid.uidByte[i];
+  if (b < 0x10) tagId += "0";   // dodaj vodecu nulu
+  tagId += String(b, HEX);
+  Serial.print(b < 0x10 ? "0" : "");
+  Serial.print(b, HEX);
 }
-Serial.print(';');
-//Serial.println();
+tagId.toUpperCase();             // izjednaci slova
+
+Serial.print(" | tagId=");
+Serial.println(tagId);           // OBAVEZNO odštampaj da vidiš stvarnu vrednost
+
 rfid.PICC_HaltA();
-while (Serial.available() > 0) {
-  Serial.read(); 
-}
-if(tagId == "5831989")
-{
+while (Serial.available() > 0) Serial.read();
+
+if (tagId == "AE0F8063") {        // ova vrednost je verovatno pogresna/nepotpuna
+  Serial.println("MATCH");
   open(1000);
 }
 
@@ -41,7 +45,7 @@ if(tagId == "5831989")
 
 void open(int d)
 {
-  s.write(90);
+  s.write(180);
   delay(d);
   s.write(0);
 }
