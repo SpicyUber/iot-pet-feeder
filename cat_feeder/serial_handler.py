@@ -3,8 +3,6 @@ import threading
 import time
 import database as db
 
-# VAZNO: proveri tacan port komandom "ls /dev/tty*" pre i posle ukljucivanja
-# Arduina preko USB-a. Obicno je /dev/ttyACM0 ili /dev/ttyUSB0.
 SERIAL_PORT = "/dev/ttyACM0"
 BAUD_RATE = 9600
 
@@ -19,7 +17,7 @@ class SerialHandler:
 
     def connect(self):
         self.ser = serial.Serial(self.port, self.baud, timeout=1)
-        time.sleep(2)  # Arduino se resetuje kad se serial port otvori, treba sacekati
+        time.sleep(2)  
 
     def start(self):
         self.connect()
@@ -56,4 +54,3 @@ class SerialHandler:
             print(f"Nova kartica {tag_id} -> registrovana u bazu")
 
 
-serial_handler = SerialHandler()

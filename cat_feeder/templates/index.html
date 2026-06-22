@@ -2,43 +2,189 @@
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="5">
-    <title>Hranilica za mačke - RFID baza</title>
+    <title>Pametna hranilica za ljubimce</title>
+
     <style>
-        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; background: #f4f4f4; color: #222; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            background: #f4f4f4;
+            color: #222;
+        }
+
         h1 { color: #2c3e50; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background: #2c3e50; color: white; }
-        .status { padding: 10px; border-radius: 6px; margin-bottom: 20px; }
-        .opened { background: #d4edda; color: #155724; }
-        .registered { background: #fff3cd; color: #856404; }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+
+        button {
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+        }
+
+        input {
+            padding: 5px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .opened { background: #d4edda; }
+        .registered { background: #fff3cd; }
     </style>
 </head>
+
 <body>
-    <h1>🐱 Hranilica za mačke</h1>
 
-    {% if last_event.tag_id %}
+<h1>Pametna hranilica za ljubimce</h1>
+
+{% if last_event.tag_id %}
+<div class="card">
     <div class="status {{ last_event.status }}">
-        Poslednji event: tag <strong>{{ last_event.tag_id }}</strong> —
-        {% if last_event.status == 'opened' %}otvorena hranilica{% else %}registrovan novi tag{% endif %}
+        Poslednji događaj: tag <strong>{{ last_event.tag_id }}</strong> —
+        {% if last_event.status == 'opened' %}
+            otvorena hranilica
+        {% else %}
+            registrovan novi tag
+        {% endif %}
     </div>
-    {% endif %}
+</div>
+{% endif %}
 
-    <h2>Registrovani RFID tagovi ({{ tags|length }})</h2>
-    <table>
-        <tr>
-            <th>Tag ID</th><th>Ime</th><th>Registrovan</th><th>Poslednje skeniranje</th><th>Broj skeniranja</th>
-        </tr>
-        {% for tag in tags %}
-        <tr>
-            <td>{{ tag.tag_id }}</td>
-            <td>{{ tag.name or '-' }}</td>
-            <td>{{ tag.registered_at }}</td>
-            <td>{{ tag.last_scan or '-' }}</td>
-            <td>{{ tag.scan_count }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+<div class="card">
+    <h3>Kontrole</h3>
+
+    <p>Preimenuj tag:</p>
+    <input id="tag-id-input" placeholder="tag_id">
+    <input id="tag-name-input" placeholder="novo ime">
+    <button onclick="renameTag()">Primeni</button>
+
+    <hr>
+
+    <p>Dodaj vreme za hranjenje:</p>
+    <input id="feeding-tag" placeholder="tag_id">
+    <input id="feeding-time" placeholder="HH:MM">
+    <button onclick="addFeedingTime()">Dodaj</button>
+
+    <div id="feeding-list"></div>
+</div>
+
+<h2>Registrovani RFID tagovi ({{ tags|length }})</h2>
+
+<table>
+    <tr>
+        <th>Tag ID</th>
+        <th>Ime</th>
+        <th>Registrovan</th>
+        <th>Poslednje skeniranje</th>
+        <th>Broj skeniranja</th>
+        <th>Akcije</th>
+    </tr>
+
+    {% for tag in tags %}
+    <tr>
+        <td>{{ tag.tag_id }}</td>
+
+        <td>{{ tag.name or '-' }}</td>
+
+        <td>{{ tag.registered_at }}</td>
+
+        <td>{{ tag.last_scan or '-' }}</td>
+
+        <td>{{ tag.scan_count }}</td>
+
+        <td>
+            <button onclick="deleteTag('{{ tag.tag_id }}')">Obriši</button>
+            <button onclick="loadFeedingTimes('{{ tag.tag_id }}')">Raspored hranjenja</button>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<script>
+async function deleteTag(tagId) {
+    await fetch(`/api/tags/${tagId}`, { method: "DELETE" });
+    location.reload();
+}
+
+async function renameTag() {
+    const tagId = document.getElementById("tag-id-input").value;
+    const name = document.getElementById("tag-name-input").value;
+
+    await fetch(`/api/tags/${tagId}/name`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name })
+    });
+
+    location.reload();
+}
+
+async function addFeedingTime() {
+    const tagId = document.getElementById("feeding-tag").value;
+    const time = document.getElementById("feeding-time").value;
+
+    await fetch(`/api/tags/${tagId}/feeding-times`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ time })
+    });
+
+    loadFeedingTimes(tagId);
+}
+
+async function loadFeedingTimes(tagId) {
+    document.getElementById("feeding-tag").value = tagId;
+
+    const res = await fetch(`/api/tags/${tagId}/feeding-times`);
+    const data = await res.json();
+
+    let html = `<h4>Rapored za ${tagId}</h4><ul>`;
+
+    for (const t of data) {
+        html += `
+            <li>
+                ${t.time}
+                <button onclick="deleteFeeding(${t.id}, '${tagId}')">X</button>
+            </li>
+        `;
+    }
+
+    html += "</ul>";
+
+    document.getElementById("feeding-list").innerHTML = html;
+}
+
+async function deleteFeeding(id, tagId) {
+    await fetch(`/api/feeding-times/${id}`, { method: "DELETE" });
+    loadFeedingTimes(tagId);
+}
+</script>
+
 </body>
 </html>

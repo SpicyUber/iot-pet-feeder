@@ -52,39 +52,8 @@ Najčešće je `/dev/ttyACM0` (Arduino Uno) ili `/dev/ttyUSB0`. Ako se razlikuje
 
 ## 5. Pokretanje servera
 ```bash
-source venv/bin/activate   # ako već nije aktivno
-python app.py
+source venv/bin/activate   # ako već nije aktiviran
+$env:MOCK_MODE="true"; py .\cat_feeder\app.py #za testiranje
+$env:MOCK_MODE="false"; py .\cat_feeder\app.py #realno okruženje
 ```
 Web interfejs: `http://<IP_RASPBERRY_PI>:5000`
-
-## 6. (Opcionalno) Pokretanje kao systemd servis
-Da server radi i posle zatvaranja Bitvise konekcije i posle restarta Pi-ja:
-
-```bash
-sudo nano /etc/systemd/system/catfeeder.service
-```
-Sadržaj:
-```ini
-[Unit]
-Description=Cat Feeder Flask Server
-After=network.target
-
-[Service]
-User=pi
-WorkingDirectory=/home/pi/cat_feeder
-ExecStart=/home/pi/cat_feeder/venv/bin/python /home/pi/cat_feeder/app.py
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-Pa:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable catfeeder
-sudo systemctl start catfeeder
-sudo journalctl -u catfeeder -f   # za praćenje logova
-```
-
-## Napomena o originalnom Arduino kodu
-U originalnom kodu `String(b, HEX)` ne dodaje vodeću nulu, pa bajt `0x05` postaje `"5"` umesto `"05"` — to menja dužinu i sadržaj `tagId` u zavisnosti od konkretnih bajtova UID-a, pa je poređenje sa hardkodovanim stringom nepouzdano. Novi kod to ispravlja (`if (b < 0x10) tagId += "0";`) i umesto lokalnog poređenja, tag se šalje Raspberry Pi-ju koji vodi bazu.

@@ -12,6 +12,7 @@ def get_connection():
 
 def init_db():
     conn = get_connection()
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS rfid_tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +23,16 @@ def init_db():
             scan_count INTEGER DEFAULT 0
         )
     """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS feeding_times (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tag_id TEXT NOT NULL,
+            time TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -32,6 +43,38 @@ def tag_exists(tag_id):
     conn.close()
     return row is not None
 
+def delete_feeding_time(time_id):
+    conn = get_connection()
+    conn.execute(
+        "DELETE FROM feeding_times WHERE id = ?",
+        (time_id,),
+    )
+    conn.commit()
+    conn.close()
+
+def get_feeding_times(tag_id):
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM feeding_times WHERE tag_id = ? ORDER BY time",
+        (tag_id,),
+    ).fetchall()
+    conn.close()
+
+    data = [dict(r) for r in rows]
+
+    return sorted(
+        data,
+        key=lambda x: int(x["time"].split(":")[0]) * 60 + int(x["time"].split(":")[1])
+    )
+
+def add_feeding_time(tag_id, time_str):
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO feeding_times (tag_id, time) VALUES (?, ?)",
+        (tag_id, time_str),
+    )
+    conn.commit()
+    conn.close()
 
 def register_tag(tag_id, name=None):
     conn = get_connection()
@@ -62,6 +105,7 @@ def get_all_tags():
 
 def delete_tag(tag_id):
     conn = get_connection()
+    conn.execute("DELETE FROM feeding_times WHERE tag_id = ?", (tag_id,))
     conn.execute("DELETE FROM rfid_tags WHERE tag_id = ?", (tag_id,))
     conn.commit()
     conn.close()

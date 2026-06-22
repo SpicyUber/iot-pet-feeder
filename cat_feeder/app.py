@@ -1,6 +1,16 @@
 from flask import Flask, jsonify, render_template, request
 import database as db
-from serial_handler import serial_handler
+import os
+print("DB FILE USED:", db.__file__)
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
+
+if MOCK_MODE:
+    from mock_serial_handler import MockSerialHandler
+    serial_handler = MockSerialHandler()
+else:
+    from serial_handler import SerialHandler
+    serial_handler = SerialHandler()
+
 
 app = Flask(__name__)
 
@@ -34,7 +44,34 @@ def api_set_name(tag_id):
     return jsonify({"status": "updated"})
 
 
+@app.route("/api/tags/<tag_id>/feeding-times", methods=["POST"])
+def api_add_feeding_time(tag_id):
+    data = request.get_json()
+    time_str = data.get("time")
+
+    if not time_str:
+        return jsonify({"error": "time required"}), 400
+
+    db.add_feeding_time(tag_id, time_str)
+
+    return jsonify({"status": "added", "time": time_str})
+
+
+@app.route("/api/tags/<tag_id>/feeding-times", methods=["GET"])
+def api_get_feeding_times(tag_id):
+    return jsonify(db.get_feeding_times(tag_id))
+
+
+@app.route("/api/feeding-times/<int:time_id>", methods=["DELETE"])
+def api_delete_feeding_time(time_id):
+    db.delete_feeding_time(time_id)
+    return jsonify({"status": "deleted"})
+
+
 if __name__ == "__main__":
     db.init_db()
     serial_handler.start()
+
+    print(f"MOCK MODE = {MOCK_MODE}")
+
     app.run(host="0.0.0.0", port=5000, debug=False)
